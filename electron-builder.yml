@@ -1,0 +1,36 @@
+appId: com.eyecare.pomodoro
+productName: EyeTimer
+copyright: Copyright 2026
+
+directories:
+  output: dist
+  buildResources: resources
+
+files:
+  - out/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  artifactName: "${productName}-${version}-Setup.${ext}"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: EyeTimer
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+
+publish:
+  provider: github
+  owner: fanrenxiuluo-sudo
+  repo: -eye-pomodoro
