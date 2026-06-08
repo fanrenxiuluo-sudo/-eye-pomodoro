@@ -1,4 +1,4 @@
-import { Notification } from 'electron'
+import { Notification, BrowserWindow } from 'electron'
 import log from 'electron-log'
 import { timerService, type PhaseEndData } from '../timer/timerService'
 import { PhaseState } from '../timer/timerState'
@@ -12,25 +12,55 @@ import type { TimerStateData } from '../timer/timerTypes'
  * 监听计时器事件，在合适的时机弹出系统通知和播放提示音。
  *
  * 触发逻辑：
- * - 声音：在 onPhaseEnd 回调中触发（阶段刚结束时）
+ * - 声音：在 onPhaseEnd 回调中触发（阶段刚结束时），重复3次
  * - 通知：在 onStateChange 回调中触发（新阶段刚开始时）
+ * - 窗口：如果窗口隐藏，阶段结束时强制显示窗口
  */
 
 let previousPhase: PhaseState = PhaseState.IDLE
 
 /**
+ * 获取主窗口（非销毁状态）
+ */
+function getMainWindow(): BrowserWindow | null {
+  const windows = BrowserWindow.getAllWindows()
+  for (const win of windows) {
+    if (!win.isDestroyed()) {
+      return win
+    }
+  }
+  return null
+}
+
+/**
+ * 如果窗口被隐藏，强制显示并聚焦
+ */
+function forceShowWindow(): void {
+  const win = getMainWindow()
+  if (win && !win.isVisible()) {
+    win.show()
+    win.focus()
+    log.info('Phase ended: force-showing hidden window')
+  }
+}
+
+/**
  * 初始化通知和声音服务
  */
 export function initNotificationService(): void {
-  // ─── 阶段结束 → 播放提示音 ───
+  // ─── 阶段结束 → 播放提示音 + 强制显示窗口 ───
   timerService.onPhaseEnd((data: PhaseEndData) => {
     const settings = getSettings()
+
+    // 无论设置如何，阶段结束时如果窗口隐藏都强制显示
+    forceShowWindow()
+
     if (!settings.soundEnabled) return
 
     if (data.type === 'work') {
-      playWorkStart() // 工作结束，即将进入休息
+      playBreakStart() // 工作结束 → 播放"休息开始"提示音
     } else {
-      playBreakStart() // 休息结束，即将回到工作
+      playBreakEnd() // 休息结束 → 播放"休息结束"提示音
     }
   })
 
@@ -60,7 +90,6 @@ export function initNotificationService(): void {
         `已完成 ${state.pomodorosCompleted} 个番茄，休息一下吧`,
         'break-start'
       )
-      playBreakEnd() // 休息开始的"完成"音
     }
 
     switch (currentPhase) {
@@ -83,13 +112,14 @@ export function initNotificationService(): void {
 
 /**
  * 显示 Windows 系统通知
+ * silent: false 让系统播放通知声音，双重提醒用户
  */
 function showNotification(title: string, body: string, type: string): void {
   try {
     const notification = new Notification({
       title,
       body,
-      silent: true, // 不使用系统默认声音，由 soundManager 控制
+      silent: false, // 允许系统通知声音，确保用户注意到
       timeoutType: 'default'
     })
 
@@ -99,14 +129,10 @@ function showNotification(title: string, body: string, type: string): void {
 
     notification.on('click', () => {
       // 点击通知 → 显示主窗口
-      const { BrowserWindow } = require('electron')
-      const windows = BrowserWindow.getAllWindows()
-      for (const win of windows) {
-        if (!win.isDestroyed()) {
-          win.show()
-          win.focus()
-          break
-        }
+      const win = getMainWindow()
+      if (win) {
+        win.show()
+        win.focus()
       }
     })
 

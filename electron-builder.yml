@@ -9,6 +9,10 @@ directories:
 files:
   - out/**/*
 
+extraResources:
+  - from: resources/icon.ico
+    to: icon.ico
+
 win:
   target:
     - target: nsis

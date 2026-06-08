@@ -27,6 +27,11 @@ declare module 'electron' {
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  // 打包后用 process.resourcesPath，开发时用 __dirname
+  const resourcesDir = !process.env.ELECTRON_RENDERER_URL
+    ? process.resourcesPath
+    : join(__dirname, '../../resources')
+
   mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
@@ -34,7 +39,7 @@ function createWindow(): void {
     minHeight: 450,
     show: false,
     autoHideMenuBar: true,
-    icon: join(__dirname, '../../resources/icon.ico'),
+    icon: join(resourcesDir, 'icon.ico'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

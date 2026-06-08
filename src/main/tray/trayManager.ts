@@ -19,13 +19,53 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 /**
+ * 获取资源文件的正确路径
+ * 打包后 app 在 asar 内，托盘图标需要从磁盘加载
+ */
+function getResourcePath(relativePath: string): string {
+  // 打包后：process.resourcesPath 指向 resources/ 目录
+  // 开发时：__dirname 在 src/main/，需要向上找到项目根目录
+  if (process.env.NODE_ENV === 'production' || !process.env.ELECTRON_RENDERER_URL) {
+    return join(process.resourcesPath, relativePath)
+  }
+  return join(__dirname, '../../resources', relativePath)
+}
+
+/**
  * 创建托盘图标并初始化所有行为
  */
 export function createTray(mainWindow: BrowserWindow): void {
-  const iconPath = join(__dirname, '../../resources/icon.ico')
+  const iconPath = getResourcePath('icon.ico')
+  log.info(`Loading tray icon from: ${iconPath}`)
+
   const icon = nativeImage.createFromPath(iconPath)
 
-  tray = new Tray(icon)
+  // 如果图标加载失败，使用备用方案
+  if (icon.isEmpty()) {
+    log.warn('Tray icon failed to load, trying alternative paths')
+    // 尝试其他可能的路径
+    const altPaths = [
+      join(__dirname, '../../../resources/icon.ico'),
+      join(process.resourcesPath, 'resources/icon.ico'),
+      join(process.execPath, '../resources/icon.ico')
+    ]
+    for (const altPath of altPaths) {
+      const altIcon = nativeImage.createFromPath(altPath)
+      if (!altIcon.isEmpty()) {
+        tray = new Tray(altIcon)
+        log.info(`Tray icon loaded from alternative: ${altPath}`)
+        break
+      }
+    }
+    if (!tray) {
+      // 最后兜底：创建一个1x1透明图标
+      tray = new Tray(nativeImage.createEmpty())
+      log.error('All tray icon paths failed, using empty icon')
+    }
+  } else {
+    tray = new Tray(icon)
+  }
+
   tray.setToolTip('EyeTimer 护眼番茄钟')
 
   updateContextMenu(mainWindow)
