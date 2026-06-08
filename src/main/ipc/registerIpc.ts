@@ -11,6 +11,13 @@ import {
   getPomodoroRecords,
   getRecordsByDateRange
 } from '../storage/sessionStore'
+import {
+  checkForUpdates,
+  downloadUpdate,
+  installUpdate,
+  getUpdateStatus,
+  openReleasePage
+} from '../update/updateService'
 
 /**
  * 统一注册所有 IPC 通道
@@ -91,6 +98,18 @@ export function registerIpc(): void {
       return { saved: false, error: String(e) }
     }
   })
+
+  // ─── Update IPC ─────────────────────────────
+
+  ipcMain.handle('update:check', () => checkForUpdates())
+
+  ipcMain.handle('update:download', () => downloadUpdate())
+
+  ipcMain.handle('update:install', () => installUpdate())
+
+  ipcMain.handle('update:get-status', () => getUpdateStatus())
+
+  ipcMain.handle('update:open-releases', () => openReleasePage())
 
   // ─── App IPC ────────────────────────────────
 

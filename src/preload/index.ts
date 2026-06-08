@@ -75,7 +75,49 @@ const api = {
 
   // ─── System ──────────────────────────────────
   minimizeToTray: () => ipcRenderer.invoke('system:minimize-to-tray'),
-  getVersion: () => ipcRenderer.invoke('app:get-version') as Promise<string>
+  getVersion: () => ipcRenderer.invoke('app:get-version') as Promise<string>,
+
+  // ─── Update ──────────────────────────────────
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  updateGetStatus: () =>
+    ipcRenderer.invoke('update:get-status') as Promise<{
+      checking: boolean
+      available: boolean
+      currentVersion: string
+      latestVersion: string | null
+      downloadProgress: number
+      error: string | null
+    }>,
+  updateOpenReleases: () => ipcRenderer.invoke('update:open-releases'),
+
+  onUpdateStatus: (
+    callback: (data: {
+      checking: boolean
+      available: boolean
+      currentVersion: string
+      latestVersion: string | null
+      downloadProgress: number
+      error: string | null
+    }) => void
+  ) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: unknown): void =>
+      callback(
+        data as {
+          checking: boolean
+          available: boolean
+          currentVersion: string
+          latestVersion: string | null
+          downloadProgress: number
+          error: string | null
+        }
+      )
+    ipcRenderer.on('update-status', listener)
+    return () => {
+      ipcRenderer.removeListener('update-status', listener)
+    }
+  }
 }
 
 if (process.contextIsolated) {

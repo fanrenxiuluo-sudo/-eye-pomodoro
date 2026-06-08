@@ -3,17 +3,46 @@ import type { Settings } from '../../../shared/types'
 import { DEFAULT_SETTINGS } from '../../../shared/types'
 import { useTheme, type Theme } from '../hooks/useTheme'
 
+interface UpdateStatus {
+  checking: boolean
+  available: boolean
+  currentVersion: string
+  latestVersion: string | null
+  downloadProgress: number
+  error: string | null
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS })
   const [loaded, setLoaded] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [theme, setTheme] = useTheme()
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({
+    checking: false,
+    available: false,
+    currentVersion: '',
+    latestVersion: null,
+    downloadProgress: 0,
+    error: null
+  })
 
   useEffect(() => {
     window.api.settingsGet().then((data) => {
       setSettings(data as Settings)
       setLoaded(true)
     })
+
+    // 获取当前版本
+    window.api.getVersion().then((v) => {
+      setUpdateStatus((prev) => ({ ...prev, currentVersion: v }))
+    })
+
+    // 监听更新状态推送
+    const unsub = window.api.onUpdateStatus((status) => {
+      setUpdateStatus((prev) => ({ ...prev, ...status }))
+    })
+
+    return () => unsub()
   }, [])
 
   const saveSettings = useCallback((newSettings: Settings) => {
@@ -189,6 +218,97 @@ export default function SettingsPage() {
             checked={settings.autoStartOnBoot}
             onChange={(e) => handleChange('autoStartOnBoot', e.target.checked)}
           />
+        </div>
+      </div>
+
+      {/* ── 关于 / 检查更新 ── */}
+      <div className="settings-section">
+        <h3>关于</h3>
+        <div className="setting-item">
+          <label>当前版本</label>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+            v{updateStatus.currentVersion || '...'}
+          </span>
+        </div>
+
+        {updateStatus.available && updateStatus.latestVersion && (
+          <div className="setting-item">
+            <label>最新版本</label>
+            <span style={{ color: '#52c41a', fontSize: '14px', fontWeight: 600 }}>
+              v{updateStatus.latestVersion} ✨
+            </span>
+          </div>
+        )}
+
+        {updateStatus.downloadProgress > 0 && updateStatus.downloadProgress < 100 && (
+          <div className="setting-item">
+            <label>下载进度</label>
+            <div style={{ flex: 1, maxWidth: 200 }}>
+              <div
+                style={{
+                  height: 6,
+                  borderRadius: 3,
+                  background: 'var(--border-color)',
+                  overflow: 'hidden'
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${updateStatus.downloadProgress}%`,
+                    background: '#1677ff',
+                    borderRadius: 3,
+                    transition: 'width 0.3s'
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                {updateStatus.downloadProgress}%
+              </span>
+            </div>
+          </div>
+        )}
+
+        {updateStatus.error && (
+          <div className="setting-item">
+            <label>错误</label>
+            <span style={{ color: '#ff4d4f', fontSize: '13px' }}>{updateStatus.error}</span>
+          </div>
+        )}
+
+        <div className="setting-item" style={{ gap: '8px' }}>
+          <button
+            className="update-btn"
+            onClick={() => window.api.updateCheck()}
+            disabled={updateStatus.checking}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 6,
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-color)',
+              color: 'var(--text-color)',
+              cursor: updateStatus.checking ? 'not-allowed' : 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            {updateStatus.checking ? '检查中...' : '检查更新'}
+          </button>
+
+          <button
+            className="update-btn"
+            onClick={() => window.api.updateOpenReleases()}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 6,
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-color)',
+              color: 'var(--text-color)',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            在浏览器中查看
+          </button>
         </div>
       </div>
     </div>

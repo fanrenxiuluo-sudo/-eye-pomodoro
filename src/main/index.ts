@@ -15,6 +15,7 @@ import { createTray, destroyTray } from './tray/trayManager'
 import { initNotificationService } from './notification/notificationService'
 import { initOverlayManager, destroyAllOverlays } from './overlay/overlayManager'
 import { registerOverlayIpc } from './overlay/overlayIpc'
+import { initAutoUpdater } from './update/updateService'
 import type { PhaseEndData } from './timer/timerService'
 
 // 扩展 app 类型，标记退出状态
@@ -146,6 +147,11 @@ if (!requestSingleInstanceLock()) {
     // 14. 系统托盘
     if (mainWindow) {
       createTray(mainWindow)
+    }
+
+    // 15. 自动更新服务
+    if (mainWindow) {
+      initAutoUpdater(mainWindow)
     }
 
     // 15. macOS dock 点击

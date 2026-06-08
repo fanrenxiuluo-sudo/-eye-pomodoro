@@ -62,5 +62,29 @@ interface Window {
     // System
     minimizeToTray: () => Promise<void>
     getVersion: () => Promise<string>
+
+    // Update
+    updateCheck: () => Promise<void>
+    updateDownload: () => Promise<void>
+    updateInstall: () => Promise<void>
+    updateGetStatus: () => Promise<{
+      checking: boolean
+      available: boolean
+      currentVersion: string
+      latestVersion: string | null
+      downloadProgress: number
+      error: string | null
+    }>
+    updateOpenReleases: () => Promise<void>
+    onUpdateStatus: (
+      callback: (data: {
+        checking: boolean
+        available: boolean
+        currentVersion: string
+        latestVersion: string | null
+        downloadProgress: number
+        error: string | null
+      }) => void
+    ) => () => void
   }
 }
