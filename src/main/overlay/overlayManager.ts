@@ -4,6 +4,12 @@ import { timerService } from '../timer/timerService'
 import { PhaseState } from '../timer/timerState'
 import { getSettings } from '../storage/settingsStore'
 import type { TimerStateData } from '../timer/timerTypes'
+import {
+  getRandomTip,
+  formatTipForOverlay,
+  getBreakType,
+  type EyeTip
+} from '../eyecare/tipData'
 
 let overlayWindows: BrowserWindow[] = []
 let tickInterval: ReturnType<typeof setInterval> | null = null
@@ -11,34 +17,37 @@ let isShowing = false
 let currentRemaining = 0
 let currentTotal = 0
 let currentPhase = ''
+let currentTip: EyeTip | null = null // 当前显示的护眼提示
 
 /**
- * 护眼提示文案（随机显示）
+ * 判断当前是否为长休息阶段
  */
-const TIPS = [
-  '👀 看看窗外远处的风景',
-  '🧘 闭眼深呼吸，放松眼部肌肉',
-  '💧 喝一杯水，活动一下身体',
-  '🌿 看看绿色植物，缓解眼疲劳',
-  '🙆 转动眼球，上下左右各看 5 秒',
-  '🌟 站起来伸展身体，拍拍肩膀',
-  '🧘‍♀️ 轻轻按摩太阳穴，缓解疲劳',
-  '🌈 远近交替对焦，锻炼睫状肌'
-]
-
-function getRandomTip(): string {
-  return TIPS[Math.floor(Math.random() * TIPS.length)]
+function isLongBreakPhase(phase: string): boolean {
+  return phase === PhaseState.LONG_BREAK || phase === PhaseState.PAUSED_LONG_BREAK
 }
 
 /**
- * 生成遮罩窗口 HTML（含 3 秒 Esc 紧急退出检测）
+ * 生成遮罩窗口 HTML（含 3 秒 Esc 紧急退出检测 + 护眼提示卡片）
  */
-function getOverlayHtml(tip: string, showSkip: boolean, forcedBreak: boolean): string {
+function getOverlayHtml(tip: EyeTip | null, showSkip: boolean, forcedBreak: boolean): string {
   const skipBtn = showSkip
     ? `<button id="skip" onclick="require('electron').ipcRenderer.invoke('overlay:skip')">
          ⏭ 跳过休息
        </button>`
     : ''
+
+  // 护眼提示卡片内容
+  const tipHtml = tip
+    ? `<div class="tip-card">
+         <div class="tip-badge">${tip.category === 'exercise' ? '🏋️ 运动' : tip.category === 'quick' ? '⚡ 快速' : tip.category === 'environment' ? '💡 环境' : '🌱 生活'}</div>
+         <div class="tip-title">${tip.title}</div>
+         <div class="tip-content">${tip.content}</div>
+         <div class="tip-meta">
+           <span class="tip-duration">⏱ ${tip.duration}</span>
+           <span class="tip-source">📎 ${tip.source}</span>
+         </div>
+       </div>`
+    : `<div id="tip">休息一下，让眼睛放松</div>`
 
   // 强制休息时：3 秒长按 Esc 紧急退出
   const escapeScript = forcedBreak
@@ -85,7 +94,6 @@ document.addEventListener('keyup', (e) => {
 const { ipcRenderer } = require('electron');
 ipcRenderer.on('overlay:update', (_e, data) => {
   document.getElementById('timer').textContent = data.timeStr;
-  if (data.tip) document.getElementById('tip').textContent = data.tip;
 });
 </script>`
 
@@ -126,6 +134,53 @@ html, body {
 }
 #skip:hover { background:rgba(255,255,255,0.15); color:#f0e6d8; }
 .eye-icon { opacity:0.12; }
+
+/* 护眼提示卡片 */
+.tip-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 20px 28px;
+  max-width: 480px;
+  text-align: left;
+  animation: tipFadeIn 0.8s ease;
+}
+.tip-badge {
+  display: inline-block;
+  background: rgba(108,204,255,0.15);
+  color: #6cccff;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+.tip-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #f0e6d8;
+  margin-bottom: 10px;
+}
+.tip-content {
+  font-size: 14px;
+  color: #b8a898;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+.tip-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #807060;
+}
+.tip-duration { color: #6cccff; }
+.tip-source { color: #a09080; }
+
+@keyframes tipFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 #esc-hint {
   position:fixed; bottom:32px; right:32px;
   display:flex; align-items:center; gap:10px;
@@ -140,7 +195,7 @@ html, body {
 </svg>
 <div id="label">休息一下，让眼睛放松</div>
 <div id="timer">00:00</div>
-<div id="tip">${tip}</div>
+${tipHtml}
 ${skipBtn}
 ${escHint}
 ${escapeScript}
@@ -156,7 +211,13 @@ function createOverlays(): void {
   const displays = screen.getAllDisplays()
   const settings = getSettings()
   const showSkip = !settings.forcedBreak
-  const tip = getRandomTip()
+  const breakType = getBreakType(
+    timerService.getState().pomodorosCompleted,
+    settings.pomodorosBeforeLongBreak
+  )
+  currentTip = getRandomTip(breakType)
+
+  log.info(`Overlay tip: [${breakType}] ${currentTip.title} (${currentTip.source})`)
 
   for (const display of displays) {
     const { x, y, width, height } = display.bounds
@@ -197,7 +258,7 @@ function createOverlays(): void {
       }
     })
 
-    overlay.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(getOverlayHtml(tip, showSkip, settings.forcedBreak))}`)
+    overlay.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(getOverlayHtml(currentTip, showSkip, settings.forcedBreak))}`)
     overlayWindows.push(overlay)
   }
 
@@ -221,16 +282,17 @@ function destroyOverlays(): void {
   }
   overlayWindows = []
   isShowing = false
+  currentTip = null
   log.info('All overlays destroyed')
 }
 
 /**
  * 向所有遮罩窗口广播更新数据
  */
-function broadcastToOverlays(timeStr: string, tip?: string): void {
+function broadcastToOverlays(timeStr: string): void {
   for (const overlay of overlayWindows) {
     if (!overlay.isDestroyed()) {
-      overlay.webContents.send('overlay:update', { timeStr, tip })
+      overlay.webContents.send('overlay:update', { timeStr })
     }
   }
 }

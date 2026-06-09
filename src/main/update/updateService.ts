@@ -17,6 +17,8 @@ export interface UpdateStatus {
   currentVersion: string
   latestVersion: string | null
   downloadProgress: number
+  downloading: boolean
+  downloaded: boolean
   error: string | null
 }
 
@@ -26,6 +28,8 @@ let status: UpdateStatus = {
   currentVersion: '',
   latestVersion: null,
   downloadProgress: 0,
+  downloading: false,
+  downloaded: false,
   error: null
 }
 
@@ -59,37 +63,25 @@ export function initAutoUpdater(win: BrowserWindow): void {
     status.checking = false
     status.available = true
     status.latestVersion = info.version
+    status.downloading = false
+    status.downloaded = false
     sendStatus()
     log.info(`Update available: ${info.version}`)
-
-    // 弹窗询问是否下载
-    dialog
-      .showMessageBox(mainWindow!, {
-        type: 'info',
-        title: '发现新版本',
-        message: `发现新版本 v${info.version}`,
-        detail: `当前版本：v${status.currentVersion}\n\n是否立即下载更新？`,
-        buttons: ['立即下载', '稍后再说'],
-        defaultId: 0,
-        cancelId: 1
-      })
-      .then(({ response }) => {
-        if (response === 0) {
-          autoUpdater.downloadUpdate()
-        }
-      })
+    // 不弹窗，让 SettingsPage 的 UI 处理
   })
 
   autoUpdater.on('update-not-available', () => {
     status.checking = false
     status.available = false
+    status.downloading = false
+    status.downloaded = false
     sendStatus()
     log.info('No updates available')
 
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: '检查更新',
-      message: '当前已是最新版本',
+      message: '当前已是最新版本 ✓',
       detail: `当前版本：v${status.currentVersion}`,
       buttons: ['好的']
     })
@@ -97,36 +89,24 @@ export function initAutoUpdater(win: BrowserWindow): void {
 
   autoUpdater.on('download-progress', (progress) => {
     status.downloadProgress = Math.round(progress.percent)
+    status.downloading = true
     sendStatus()
   })
 
   autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     status.available = true
+    status.downloading = false
+    status.downloaded = true
     status.downloadProgress = 100
     status.latestVersion = info.version
     sendStatus()
     log.info(`Update downloaded: ${info.version}`)
-
-    // 弹窗询问是否立即安装
-    dialog
-      .showMessageBox(mainWindow!, {
-        type: 'info',
-        title: '更新下载完成',
-        message: `新版本 v${info.version} 已下载完成`,
-        detail: '点击"立即重启"安装更新，更新将在重启后生效。',
-        buttons: ['立即重启', '稍后重启'],
-        defaultId: 0,
-        cancelId: 1
-      })
-      .then(({ response }) => {
-        if (response === 0) {
-          autoUpdater.quitAndInstall()
-        }
-      })
+    // SettingsPage 会显示"立即重启安装"按钮
   })
 
   autoUpdater.on('error', (err) => {
     status.checking = false
+    status.downloading = false
     status.error = err.message
     sendStatus()
     log.error('Auto-updater error:', err)

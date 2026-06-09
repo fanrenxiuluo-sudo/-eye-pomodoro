@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { Download, CheckCircle, RefreshCw, AlertCircle, ExternalLink } from 'lucide-react'
 import type { Settings } from '../../../shared/types'
 import { DEFAULT_SETTINGS } from '../../../shared/types'
 import { useTheme, type Theme } from '../hooks/useTheme'
@@ -9,6 +10,8 @@ interface UpdateStatus {
   currentVersion: string
   latestVersion: string | null
   downloadProgress: number
+  downloading: boolean
+  downloaded: boolean
   error: string | null
 }
 
@@ -23,6 +26,8 @@ export default function SettingsPage() {
     currentVersion: '',
     latestVersion: null,
     downloadProgress: 0,
+    downloading: false,
+    downloaded: false,
     error: null
   })
 
@@ -226,29 +231,29 @@ export default function SettingsPage() {
         <h3>关于</h3>
         <div className="setting-item">
           <label>当前版本</label>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>
             v{updateStatus.currentVersion || '...'}
           </span>
         </div>
 
         {updateStatus.available && updateStatus.latestVersion && (
-          <div className="setting-item">
-            <label>最新版本</label>
-            <span style={{ color: '#52c41a', fontSize: '14px', fontWeight: 600 }}>
-              v{updateStatus.latestVersion} ✨
+          <div className="setting-item" style={{ borderColor: 'var(--success)', background: 'rgba(108,255,184,0.05)' }}>
+            <label>🎉 发现新版本</label>
+            <span style={{ color: 'var(--success)', fontSize: '15px', fontWeight: 700 }}>
+              v{updateStatus.latestVersion}
             </span>
           </div>
         )}
 
-        {updateStatus.downloadProgress > 0 && updateStatus.downloadProgress < 100 && (
+        {updateStatus.downloading && (
           <div className="setting-item">
-            <label>下载进度</label>
+            <label>下载中...</label>
             <div style={{ flex: 1, maxWidth: 200 }}>
               <div
                 style={{
                   height: 6,
                   borderRadius: 3,
-                  background: 'var(--border-color)',
+                  background: 'var(--border)',
                   overflow: 'hidden'
                 }}
               >
@@ -256,58 +261,107 @@ export default function SettingsPage() {
                   style={{
                     height: '100%',
                     width: `${updateStatus.downloadProgress}%`,
-                    background: '#1677ff',
+                    background: 'var(--accent-gradient)',
                     borderRadius: 3,
                     transition: 'width 0.3s'
                   }}
                 />
               </div>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
                 {updateStatus.downloadProgress}%
               </span>
             </div>
           </div>
         )}
 
+        {updateStatus.downloaded && (
+          <div className="setting-item" style={{ borderColor: 'var(--success)', background: 'rgba(108,255,184,0.05)' }}>
+            <label>
+              <CheckCircle size={16} style={{ verticalAlign: 'middle', marginRight: 6, color: 'var(--success)' }} />
+              更新已下载
+            </label>
+            <button
+              className="update-btn"
+              onClick={() => window.api.updateInstall()}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 10,
+                border: 'none',
+                background: 'var(--accent-gradient)',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px var(--accent-glow)'
+              }}
+            >
+              立即重启安装
+            </button>
+          </div>
+        )}
+
         {updateStatus.error && (
-          <div className="setting-item">
-            <label>错误</label>
-            <span style={{ color: '#ff4d4f', fontSize: '13px' }}>{updateStatus.error}</span>
+          <div className="setting-item" style={{ borderColor: 'var(--danger)' }}>
+            <label>
+              <AlertCircle size={16} style={{ verticalAlign: 'middle', marginRight: 6, color: 'var(--danger)' }} />
+              更新失败
+            </label>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {updateStatus.error}
+            </span>
           </div>
         )}
 
         <div className="setting-item" style={{ gap: '8px' }}>
           <button
             className="update-btn"
-            onClick={() => window.api.updateCheck()}
-            disabled={updateStatus.checking}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 6,
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-color)',
-              color: 'var(--text-color)',
-              cursor: updateStatus.checking ? 'not-allowed' : 'pointer',
-              fontSize: '13px'
+            onClick={() => {
+              setUpdateStatus(prev => ({ ...prev, downloading: false, downloaded: false, error: null }))
+              window.api.updateCheck()
             }}
+            disabled={updateStatus.checking || updateStatus.downloading}
           >
-            {updateStatus.checking ? '检查中...' : '检查更新'}
+            {updateStatus.checking ? (
+              <>
+                <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />
+                检查中...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={14} style={{ marginRight: 6 }} />
+                检查更新
+              </>
+            )}
           </button>
+
+          {updateStatus.available && !updateStatus.downloading && !updateStatus.downloaded && (
+            <button
+              className="update-btn"
+              onClick={() => window.api.updateDownload()}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 10,
+                border: 'none',
+                background: 'var(--accent-gradient)',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px var(--accent-glow)'
+              }}
+            >
+              <Download size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              下载更新
+            </button>
+          )}
 
           <button
             className="update-btn"
             onClick={() => window.api.updateOpenReleases()}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 6,
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-color)',
-              color: 'var(--text-color)',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
+            style={{ marginLeft: 'auto' }}
           >
-            在浏览器中查看
+            <ExternalLink size={14} style={{ marginRight: 4 }} />
+            Release 页面
           </button>
         </div>
       </div>

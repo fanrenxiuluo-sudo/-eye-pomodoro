@@ -8,29 +8,40 @@ import { getSettings } from '../storage/settingsStore'
 
 // ─── 提示音定义 ───────────────────────────────
 // 每个提示音是一组正弦波音符序列，频率单位 Hz
-// 设计原则：醒目但不刺耳，重复播放确保用户注意到
+// 设计原则：音调鲜明、重复播放、音量最大化，确保用户在任何情况下都能注意到
+// v0.3.0: 增大音量 (0.75→0.95)，增加重复次数 (3→5)，加入更复杂的旋律模式
 
 /** 工作开始：上升音调（C5→E5→G5→C6），积极向上，尾音高亮 */
 const WORK_START_MELODY = [
-  { frequency: 523, duration: 0.18 }, // C5
-  { frequency: 659, duration: 0.18 }, // E5
-  { frequency: 784, duration: 0.18 }, // G5
-  { frequency: 1047, duration: 0.3 } // C6（高音结尾，醒目）
-]
-
-/** 工作结束 / 休息开始：下降音调（C6→G5→E5→C5），通知休息 */
-const BREAK_START_MELODY = [
-  { frequency: 1047, duration: 0.18 }, // C6（高音起始，提醒注意）
-  { frequency: 784, duration: 0.18 }, // G5
-  { frequency: 659, duration: 0.18 }, // E5
-  { frequency: 523, duration: 0.3 } // C5（低音结尾，舒缓）
-]
-
-/** 休息结束：温暖的双音（C5→E5→G5），提示回归工作 */
-const BREAK_END_MELODY = [
   { frequency: 523, duration: 0.15 }, // C5
   { frequency: 659, duration: 0.15 }, // E5
-  { frequency: 784, duration: 0.25 } // G5
+  { frequency: 784, duration: 0.15 }, // G5
+  { frequency: 1047, duration: 0.25 }, // C6（高音结尾，醒目）
+  { frequency: 784, duration: 0.1 }, // G5（回音确认）
+  { frequency: 1047, duration: 0.35 } // C6（重复高音，强化记忆）
+]
+
+/** 工作结束 / 休息开始：下降音调，更加醒目的提醒序列 */
+const BREAK_START_MELODY = [
+  { frequency: 1319, duration: 0.2 }, // E6（更高起始，紧急感）
+  { frequency: 1047, duration: 0.15 }, // C6
+  { frequency: 784, duration: 0.15 }, // G5
+  { frequency: 659, duration: 0.15 }, // E5
+  { frequency: 784, duration: 0.1 }, // G5（反弹音）
+  { frequency: 1047, duration: 0.3 }, // C6（高音结尾，确认）
+  { frequency: 784, duration: 0.15 }, // G5
+  { frequency: 523, duration: 0.4 } // C5（低音舒缓）
+]
+
+/** 休息结束：活力回归旋律（C5→E5→G5→C6→G5→C6） */
+const BREAK_END_MELODY = [
+  { frequency: 523, duration: 0.12 }, // C5
+  { frequency: 659, duration: 0.12 }, // E5
+  { frequency: 784, duration: 0.12 }, // G5
+  { frequency: 1047, duration: 0.2 }, // C6
+  { frequency: 784, duration: 0.1 }, // G5
+  { frequency: 1047, duration: 0.15 }, // C6
+  { frequency: 1319, duration: 0.3 } // E6（高音结尾，活力回归）
 ]
 
 // ─── 缓存生成的 WAV Buffer ────────────────────
@@ -41,21 +52,21 @@ let breakEndWav: Buffer | null = null
 
 function getWorkStartWav(): Buffer {
   if (!workStartWav) {
-    workStartWav = generateMelody(WORK_START_MELODY, 0.75)
+    workStartWav = generateMelody(WORK_START_MELODY, 0.95)
   }
   return workStartWav
 }
 
 function getBreakStartWav(): Buffer {
   if (!breakStartWav) {
-    breakStartWav = generateMelody(BREAK_START_MELODY, 0.75)
+    breakStartWav = generateMelody(BREAK_START_MELODY, 0.95)
   }
   return breakStartWav
 }
 
 function getBreakEndWav(): Buffer {
   if (!breakEndWav) {
-    breakEndWav = generateMelody(BREAK_END_MELODY, 0.7)
+    breakEndWav = generateMelody(BREAK_END_MELODY, 0.9)
   }
   return breakEndWav
 }
@@ -131,17 +142,17 @@ function playWavRepeated(wavBuffer: Buffer, count: number = 3, intervalMs: numbe
 /** 播放"开始工作"提示音（重复3次） */
 export function playWorkStart(): void {
   log.info('Sound: work start (x3)')
-  playWavRepeated(getWorkStartWav(), 3, 1200)
+  playWavRepeated(getWorkStartWav(), 3, 1000)
 }
 
-/** 播放"休息开始"提示音（重复3次） */
+/** 播放"休息开始"提示音（重复5次，间隔更短，确保用户注意到） */
 export function playBreakStart(): void {
-  log.info('Sound: break start (x3)')
-  playWavRepeated(getBreakStartWav(), 3, 1200)
+  log.info('Sound: break start (x5)')
+  playWavRepeated(getBreakStartWav(), 5, 800)
 }
 
-/** 播放"休息结束"提示音（重复3次） */
+/** 播放"休息结束"提示音（重复4次） */
 export function playBreakEnd(): void {
-  log.info('Sound: break end (x3)')
-  playWavRepeated(getBreakEndWav(), 3, 1200)
+  log.info('Sound: break end (x4)')
+  playWavRepeated(getBreakEndWav(), 4, 900)
 }

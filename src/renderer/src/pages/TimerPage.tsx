@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Play, Pause, RotateCcw, SkipForward } from 'lucide-react'
+import { Play, Pause, RotateCcw, SkipForward, Coffee, Zap } from 'lucide-react'
 
 const PHASE_LABELS: Record<string, string> = {
   idle: '准备开始',
@@ -20,6 +20,46 @@ const PHASE_RING_COLORS: Record<string, string> = {
   'paused-long-break': 'var(--info-muted)'
 }
 
+// ─── 醒目提醒组件 ────────────────────────────
+interface AlertData {
+  type: 'work-end' | 'break-end'
+  message: string
+  tip: string
+  visible: boolean
+}
+
+function AlertOverlay({ alert, onDismiss }: { alert: AlertData; onDismiss: () => void }) {
+  if (!alert.visible) return null
+
+  const isWorkEnd = alert.type === 'work-end'
+
+  return (
+    <div className="alert-overlay" onClick={onDismiss}>
+      <div className="alert-content" onClick={(e) => e.stopPropagation()}>
+        {/* 全屏脉冲光环 */}
+        <div className="alert-pulse" />
+
+        <div className="alert-icon">{isWorkEnd ? '🎉' : '⚡'}</div>
+        <div className="alert-title">
+          {isWorkEnd ? '专注完成！' : '休息结束！'}
+        </div>
+        <div className="alert-message">{alert.message}</div>
+
+        {alert.tip && (
+          <div className="alert-tip-card">
+            <div className="alert-tip-icon">💡</div>
+            <div className="alert-tip-text">{alert.tip}</div>
+          </div>
+        )}
+
+        <button className="alert-dismiss-btn" onClick={onDismiss}>
+          {isWorkEnd ? '开始休息 ☕' : '开始专注 🍅'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
@@ -31,6 +71,7 @@ export default function TimerPage() {
   const [remaining, setRemaining] = useState(0)
   const [total, setTotal] = useState(25 * 60)
   const [pomodorosCompleted, setPomodorosCompleted] = useState(0)
+  const [alert, setAlert] = useState<AlertData>({ type: 'work-end', message: '', tip: '', visible: false })
   const cleanupRef = useRef<(() => void)[]>([])
 
   // 监听 IPC 事件，组件卸载时清理
@@ -48,7 +89,12 @@ export default function TimerPage() {
       setPomodorosCompleted(data.pomodorosCompleted)
     })
 
-    cleanupRef.current = [unsubTick, unsubState]
+    // 监听醒目提醒事件（v0.3.0）
+    const unsubAlert = window.api.onAlertShow((data) => {
+      setAlert({ ...data, visible: true })
+    })
+
+    cleanupRef.current = [unsubTick, unsubState, unsubAlert]
 
     // 获取初始状态
     window.api.timerGetState().then((state) => {
@@ -85,6 +131,10 @@ export default function TimerPage() {
     window.api.timerSkip()
   }, [])
 
+  const handleAlertDismiss = useCallback(() => {
+    setAlert((prev) => ({ ...prev, visible: false }))
+  }, [])
+
   // SVG 圆环参数
   const radius = 90
   const circumference = 2 * Math.PI * radius // ≈ 565.48
@@ -102,6 +152,7 @@ export default function TimerPage() {
 
   return (
     <div className="page timer-page">
+      <AlertOverlay alert={alert} onDismiss={handleAlertDismiss} />
       <div className="timer-status">{PHASE_LABELS[phase] || phase}</div>
 
       <div className="timer-display">

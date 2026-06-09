@@ -88,6 +88,8 @@ const api = {
       currentVersion: string
       latestVersion: string | null
       downloadProgress: number
+      downloading: boolean
+      downloaded: boolean
       error: string | null
     }>,
   updateOpenReleases: () => ipcRenderer.invoke('update:open-releases'),
@@ -99,6 +101,8 @@ const api = {
       currentVersion: string
       latestVersion: string | null
       downloadProgress: number
+      downloading: boolean
+      downloaded: boolean
       error: string | null
     }) => void
   ) => {
@@ -110,12 +114,26 @@ const api = {
           currentVersion: string
           latestVersion: string | null
           downloadProgress: number
+          downloading: boolean
+          downloaded: boolean
           error: string | null
         }
       )
     ipcRenderer.on('update-status', listener)
     return () => {
       ipcRenderer.removeListener('update-status', listener)
+    }
+  },
+
+  // ─── Alert (v0.3.0) ──────────────────────────
+  onAlertShow: (
+    callback: (data: { type: 'work-end' | 'break-end'; message: string; tip: string }) => void
+  ) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: unknown): void =>
+      callback(data as { type: 'work-end' | 'break-end'; message: string; tip: string })
+    ipcRenderer.on('alert:show', listener)
+    return () => {
+      ipcRenderer.removeListener('alert:show', listener)
     }
   }
 }
