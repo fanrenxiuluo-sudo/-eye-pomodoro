@@ -72,6 +72,7 @@ export default function TimerPage() {
   const [total, setTotal] = useState(25 * 60)
   const [pomodorosCompleted, setPomodorosCompleted] = useState(0)
   const [forcedBreak, setForcedBreak] = useState(false)
+  const [pomodorosTarget, setPomodorosTarget] = useState(4)
   const [alert, setAlert] = useState<AlertData>({ type: 'work-end', message: '', tip: '', visible: false })
   const cleanupRef = useRef<(() => void)[]>([])
 
@@ -102,6 +103,11 @@ export default function TimerPage() {
       setTotal(state.total)
       setPomodorosCompleted(state.pomodorosCompleted)
       setForcedBreak(state.forcedBreak)
+    })
+
+    // 加载番茄目标数设置
+    window.api.settingsGet().then((s) => {
+      setPomodorosTarget((s.pomodorosBeforeLongBreak as number) ?? 4)
     })
 
     return () => {
@@ -174,7 +180,7 @@ export default function TimerPage() {
       </div>
 
       <div className="pomodoro-counter">
-        {[1, 2, 3, 4].map((i) => (
+        {Array.from({ length: pomodorosTarget }, (_, i) => i + 1).map((i) => (
           <span key={i} className={`pomodoro-dot ${i <= pomodorosCompleted ? 'completed' : ''}`} />
         ))}
       </div>

@@ -19,6 +19,12 @@ import { initAutoUpdater } from './update/updateService'
 import type { PhaseEndData } from './timer/timerService'
 import { isQuitting, setQuitting } from './app/appState'
 
+// ─── GPU 兼容性修复 ───────────────────────────
+// Windows 上某些显卡驱动（尤其 Intel HD / 核显）下，Chromium GPU 沙箱进程
+// 会崩溃（exit_code=0x80000003 STATUS_BREAKPOINT），导致窗口无法渲染。
+// 禁用 GPU 沙箱可解决此问题，对性能影响极小。
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
@@ -130,25 +136,25 @@ if (!requestSingleInstanceLock()) {
     const currentSettings = getSettings()
     setAutoStart(!!currentSettings.autoStartOnBoot)
 
-    // 12. 窗口快捷键
+    // 13. 窗口快捷键
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
     })
 
-    // 13. 创建主窗口
+    // 14. 创建主窗口
     createWindow()
 
-    // 14. 系统托盘
+    // 15. 系统托盘
     if (mainWindow) {
       createTray(mainWindow)
     }
 
-    // 15. 自动更新服务
+    // 16. 自动更新服务
     if (mainWindow) {
       initAutoUpdater(mainWindow)
     }
 
-    // 15. macOS dock 点击
+    // 17. macOS dock 点击
     app.on('activate', () => {
       if (mainWindow) {
         mainWindow.show()

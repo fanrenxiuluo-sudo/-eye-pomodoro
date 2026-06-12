@@ -188,7 +188,7 @@ function updateContextMenu(mainWindow: BrowserWindow): void {
       label: '🚨 紧急退出休息',
       click: () => {
         log.warn('Emergency exit from tray')
-        timerService.skip()
+        timerService.emergencySkip()
       }
     })
   }
