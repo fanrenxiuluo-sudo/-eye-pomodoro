@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+
+- Before editing, read `AGENTS.md`, `README.md`, `package.json`, and the relevant source files.
+- Use npm commands for this project.
+- Keep changes minimal and limited to the user's request.
+- Do not edit `node_modules/`, `out/`, `dist/`, build artifacts, logs, or environment files.
+- Preserve the existing Electron project boundaries:
+  - `src/main/` for main process logic.
+  - `src/preload/` for preload bridge logic.
+  - `src/renderer/` for React UI.
+  - `src/shared/` for shared types.
+- After source changes, run `npm test`.
+- After TypeScript config, build config, Electron config, or packaging changes, run `npm run build`.
+- Do not mark work complete while required verification commands are failing.
+- Final replies must be in Chinese and include changed files, verification results, and remaining risks.
