@@ -7,7 +7,7 @@ import type { Settings } from '../../shared/types'
  * 使用 electron-store 在 userData 目录下保存用户设置。
  * electron-store 在 app ready 后自动创建配置文件。
  */
-let store: Awaited<ReturnType<typeof import('electron-store')>> | null = null
+let store: { get: (key: string) => unknown; set: (key: string, value: unknown) => void; has: (key: string) => boolean } | null = null
 let currentSettings: Settings = { ...DEFAULT_SETTINGS }
 
 /**
@@ -40,7 +40,7 @@ export async function initSettings(): Promise<void> {
   store = new ElectronStore({ schema })
 
   // 从 electron-store 加载所有设置
-  for (const key of Object.keys(DEFAULT_SETTINGS) as Array<keyof Settings>) {
+  for (const key of Object.keys(DEFAULT_SETTINGS)) {
     if (store.has(key)) {
       ;(currentSettings as Record<string, unknown>)[key] = store.get(key)
     }
@@ -58,9 +58,8 @@ export function saveSettings(settings: Settings): void {
 
   // 同步写入 electron-store
   if (store) {
-    for (const key of Object.keys(settings) as Array<keyof Settings>) {
-      if (key === 'key') continue // 跳过索引签名
-      store.set(key, settings[key] as never)
+    for (const [key, value] of Object.entries(settings)) {
+      store.set(key, value)
     }
   }
 }

@@ -2,8 +2,8 @@ import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import log from 'electron-log'
-import type { SavedTimerState } from './timerTypes'
-import { PhaseState } from './timerState'
+import type { SavedTimerState } from '../timer/timerTypes'
+import { PhaseState } from '../timer/timerState'
 
 const SCHEMA_VERSION = 1
 

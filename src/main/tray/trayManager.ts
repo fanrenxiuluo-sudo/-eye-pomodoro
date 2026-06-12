@@ -4,6 +4,7 @@ import log from 'electron-log'
 import { timerService } from '../timer/timerService'
 import { PhaseState } from '../timer/timerState'
 import { getSettings } from '../storage/settingsStore'
+import { setQuitting } from '../app/appState'
 
 let tray: Tray | null = null
 let updateTimer: ReturnType<typeof setInterval> | null = null
@@ -206,7 +207,7 @@ function updateContextMenu(mainWindow: BrowserWindow): void {
       label: '退出',
       click: () => {
         log.info('User clicked exit from tray')
-        app.isQuitting = true
+        setQuitting(true)
         app.quit()
       }
     }

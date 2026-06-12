@@ -17,13 +17,7 @@ import { initOverlayManager, destroyAllOverlays } from './overlay/overlayManager
 import { registerOverlayIpc } from './overlay/overlayIpc'
 import { initAutoUpdater } from './update/updateService'
 import type { PhaseEndData } from './timer/timerService'
-
-// 扩展 app 类型，标记退出状态
-declare module 'electron' {
-  interface App {
-    isQuitting: boolean
-  }
-}
+import { isQuitting, setQuitting } from './app/appState'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -53,7 +47,7 @@ function createWindow(): void {
 
   // ─── 关闭窗口 → 最小化到托盘（而非退出） ───
   mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
+    if (!isQuitting()) {
       event.preventDefault()
       mainWindow?.hide()
       log.info('Window closed → hidden to tray')
@@ -99,7 +93,7 @@ if (!requestSingleInstanceLock()) {
     log.info('App starting...')
 
     // 1. 初始化标记
-    app.isQuitting = false
+    setQuitting(false)
 
     // 2. AppUserModelID（Windows 通知图标）
     electronApp.setAppUserModelId('com.eyecare.pomodoro')
@@ -174,7 +168,7 @@ if (!requestSingleInstanceLock()) {
 
   app.on('before-quit', () => {
     log.info('App quitting...')
-    app.isQuitting = true
+    setQuitting(true)
     destroyAllOverlays()
     destroyTray()
     saveDb()

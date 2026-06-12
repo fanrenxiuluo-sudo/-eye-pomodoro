@@ -82,7 +82,7 @@ export function registerIpc(): void {
       let content: string
       if (format === 'csv') {
         const header = 'startTime,endTime,duration,actualDuration,completed,type'
-        const rows = records.map((r: Record<string, unknown>) =>
+        const rows = (records as Record<string, unknown>[]).map((r) =>
           [r.startTime, r.endTime, r.duration, r.actualDuration, r.completed, r.type].join(',')
         )
         content = [header, ...rows].join('\n')

@@ -87,7 +87,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
     })
   })
 
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', (progress: { percent: number }) => {
     status.downloadProgress = Math.round(progress.percent)
     status.downloading = true
     sendStatus()
@@ -104,7 +104,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
     // SettingsPage 会显示"立即重启安装"按钮
   })
 
-  autoUpdater.on('error', (err) => {
+  autoUpdater.on('error', (err: Error) => {
     status.checking = false
     status.downloading = false
     status.error = err.message
@@ -120,7 +120,7 @@ export function initAutoUpdater(win: BrowserWindow): void {
  */
 export function checkForUpdates(): void {
   if (!mainWindow) return
-  autoUpdater.checkForUpdates().catch((err) => {
+  autoUpdater.checkForUpdates().catch((err: Error) => {
     log.error('Failed to check for updates:', err)
     status.error = err.message
     sendStatus()
@@ -131,7 +131,7 @@ export function checkForUpdates(): void {
  * 下载更新
  */
 export function downloadUpdate(): void {
-  autoUpdater.downloadUpdate().catch((err) => {
+  autoUpdater.downloadUpdate().catch((err: Error) => {
     log.error('Failed to download update:', err)
     status.error = err.message
     sendStatus()
