@@ -1,6 +1,6 @@
 {
   "name": "eye-pomodoro",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "护眼番茄钟 — 定时休息提醒，保护眼睛",
   "main": "./out/main/index.js",
   "author": "fanrenxiuluo-sudo",
@@ -10,7 +10,9 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "build:win": "electron-vite build && electron-builder --win --publish never",
-    "build:win:portable": "electron-vite build && electron-builder --win portable --publish never"
+    "build:win:portable": "electron-vite build && electron-builder --win portable --publish never",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "auto-launch": "^5.0.6",
@@ -36,6 +38,7 @@
     "react-router-dom": "^7.6.1",
     "recharts": "^2.15.4",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^4.1.8"
   }
 }

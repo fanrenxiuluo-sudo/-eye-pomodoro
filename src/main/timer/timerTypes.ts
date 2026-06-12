@@ -16,6 +16,7 @@ export interface TimerStateData {
   remaining: number
   total: number
   pomodorosCompleted: number
+  forcedBreak: boolean
 }
 
 /**

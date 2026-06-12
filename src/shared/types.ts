@@ -21,6 +21,8 @@ export interface Settings {
   notificationEnabled: boolean
   theme: 'light' | 'dark' | 'system'
   autoStartOnBoot: boolean
+  warmFilter: boolean
+  warmFilterIntensity: number // 0-100
   [key: string]: unknown // electron-store 索引签名兼容
 }
 
@@ -37,7 +39,9 @@ export const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.7,
   notificationEnabled: true,
   theme: 'system',
-  autoStartOnBoot: false
+  autoStartOnBoot: false,
+  warmFilter: false,
+  warmFilterIntensity: 40
 }
 
 export type SessionType = 'work' | 'short-break' | 'long-break'

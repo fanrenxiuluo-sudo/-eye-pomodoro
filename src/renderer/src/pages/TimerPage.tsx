@@ -71,10 +71,10 @@ export default function TimerPage() {
   const [remaining, setRemaining] = useState(0)
   const [total, setTotal] = useState(25 * 60)
   const [pomodorosCompleted, setPomodorosCompleted] = useState(0)
+  const [forcedBreak, setForcedBreak] = useState(false)
   const [alert, setAlert] = useState<AlertData>({ type: 'work-end', message: '', tip: '', visible: false })
   const cleanupRef = useRef<(() => void)[]>([])
 
-  // 监听 IPC 事件，组件卸载时清理
   useEffect(() => {
     const unsubTick = window.api.onTimerTick((data) => {
       setRemaining(data.remaining)
@@ -87,21 +87,21 @@ export default function TimerPage() {
       setRemaining(data.remaining)
       setTotal(data.total)
       setPomodorosCompleted(data.pomodorosCompleted)
+      setForcedBreak(data.forcedBreak)
     })
 
-    // 监听醒目提醒事件（v0.3.0）
     const unsubAlert = window.api.onAlertShow((data) => {
       setAlert({ ...data, visible: true })
     })
 
     cleanupRef.current = [unsubTick, unsubState, unsubAlert]
 
-    // 获取初始状态
     window.api.timerGetState().then((state) => {
       setPhase(state.phase)
       setRemaining(state.remaining)
       setTotal(state.total)
       setPomodorosCompleted(state.pomodorosCompleted)
+      setForcedBreak(state.forcedBreak)
     })
 
     return () => {
@@ -144,6 +144,8 @@ export default function TimerPage() {
   const isRunning = phase === 'working' || phase === 'short-break' || phase === 'long-break'
   const isPaused = phase.includes('paused')
   const isIdle = phase === 'idle'
+  const isBreak = phase.includes('break')
+  const skipDisabled = isIdle || (isBreak && forcedBreak)
 
   const ringColor = PHASE_RING_COLORS[phase] || 'var(--accent)'
 
@@ -195,9 +197,9 @@ export default function TimerPage() {
         </button>
         <button
           className="btn-icon"
-          title="跳过"
+          title={skipDisabled && isBreak ? '强制休息中，不可跳过' : '跳过'}
           onClick={handleSkip}
-          disabled={isIdle}
+          disabled={skipDisabled}
         >
           <SkipForward size={20} />
         </button>

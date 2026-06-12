@@ -14,6 +14,7 @@ const api = {
       remaining: number
       total: number
       pomodorosCompleted: number
+      forcedBreak: boolean
     }>,
 
   onTimerTick: (callback: (data: { remaining: number; total: number; phase: string }) => void) => {
@@ -26,14 +27,14 @@ const api = {
   },
 
   onTimerStateChange: (
-    callback: (data: { phase: string; remaining: number; total: number; pomodorosCompleted: number }) => void
+    callback: (data: { phase: string; remaining: number; total: number; pomodorosCompleted: number; forcedBreak: boolean }) => void
   ) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
       data: unknown
     ): void =>
       callback(
-        data as { phase: string; remaining: number; total: number; pomodorosCompleted: number }
+        data as { phase: string; remaining: number; total: number; pomodorosCompleted: number; forcedBreak: boolean }
       )
     ipcRenderer.on('timer:state-change', listener)
     return () => {

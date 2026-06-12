@@ -34,8 +34,8 @@ class TimerService {
   private pomodorosCompleted: number = 0
   private tickTimer: ReturnType<typeof setInterval> | null = null
   private phaseStartTs: number = 0 // 当前阶段开始时间戳
-  private onPhaseEndCallback: ((data: PhaseEndData) => void) | null = null
-  private onStateChangeCallback: ((state: TimerStateData) => void) | null = null
+  private phaseEndListeners: ((data: PhaseEndData) => void)[] = []
+  private stateChangeListeners: ((state: TimerStateData) => void)[] = []
 
   /**
    * 初始化计时器。检查上次是否有未完成的计时。
@@ -74,14 +74,14 @@ class TimerService {
     }
   }
 
-  /** 注册阶段结束回调 */
+  /** 注册阶段结束监听器（支持多个，不会互相覆盖） */
   onPhaseEnd(callback: (data: PhaseEndData) => void): void {
-    this.onPhaseEndCallback = callback
+    this.phaseEndListeners.push(callback)
   }
 
-  /** 注册状态变更回调（供通知服务等外部模块监听） */
+  /** 注册状态变更监听器（支持多个，不会互相覆盖） */
   onStateChange(callback: (state: TimerStateData) => void): void {
-    this.onStateChangeCallback = callback
+    this.stateChangeListeners.push(callback)
   }
 
   // ─── IPC 操作 ───────────────────────────────
@@ -157,18 +157,41 @@ class TimerService {
     log.info('Timer reset')
   }
 
-  skip(): void {
-    if (this.phase === PhaseState.IDLE) return
+  skip(): boolean {
+    if (this.phase === PhaseState.IDLE) return false
+
+    const settings = getSettings()
+    const isBreak =
+      this.phase === PhaseState.SHORT_BREAK ||
+      this.phase === PhaseState.LONG_BREAK ||
+      this.phase === PhaseState.PAUSED_SHORT_BREAK ||
+      this.phase === PhaseState.PAUSED_LONG_BREAK
+
+    if (isBreak && settings.forcedBreak) {
+      log.warn('Timer.skip blocked: forced break is enabled')
+      return false
+    }
+
     log.info(`Timer skip: ${this.phase}`)
+    this.handlePhaseEnd(false)
+    return true
+  }
+
+  /** 紧急跳过 — 绕过 forcedBreak 限制（仅供 3 秒 Esc 紧急退出使用） */
+  emergencySkip(): void {
+    if (this.phase === PhaseState.IDLE) return
+    log.warn(`Timer emergency skip: ${this.phase}`)
     this.handlePhaseEnd(false)
   }
 
   getState(): TimerStateData {
+    const settings = getSettings()
     return {
       phase: this.phase,
       remaining: this.getRemaining(),
       total: this.getPhaseTotalSec(),
-      pomodorosCompleted: this.pomodorosCompleted
+      pomodorosCompleted: this.pomodorosCompleted,
+      forcedBreak: settings.forcedBreak
     }
   }
 
@@ -196,29 +219,40 @@ class TimerService {
     const plannedSec = getPhaseTotal(completedPhase, settings)
     const actualSec = Math.round((Date.now() - this.phaseStartTs) / 1000)
 
-    // 通知外部记录（番茄工作才记录）
     if (completedPhase === PhaseState.WORKING) {
       this.pomodorosCompleted++
-      this.onPhaseEndCallback?.({
-        type: 'work',
-        startTime: new Date(this.phaseStartTs).toISOString(),
-        endTime: new Date().toISOString(),
-        plannedSec,
-        actualSec,
-        completed
-      })
-    } else if (
-      completedPhase === PhaseState.SHORT_BREAK ||
-      completedPhase === PhaseState.LONG_BREAK
-    ) {
-      this.onPhaseEndCallback?.({
-        type: completedPhase as 'short-break' | 'long-break',
-        startTime: new Date(this.phaseStartTs).toISOString(),
-        endTime: new Date().toISOString(),
-        plannedSec,
-        actualSec,
-        completed
-      })
+    }
+
+    const phaseEndData: PhaseEndData | null =
+      completedPhase === PhaseState.WORKING
+        ? {
+            type: 'work',
+            startTime: new Date(this.phaseStartTs).toISOString(),
+            endTime: new Date().toISOString(),
+            plannedSec,
+            actualSec,
+            completed
+          }
+        : completedPhase === PhaseState.SHORT_BREAK ||
+            completedPhase === PhaseState.LONG_BREAK
+          ? {
+              type: completedPhase as 'short-break' | 'long-break',
+              startTime: new Date(this.phaseStartTs).toISOString(),
+              endTime: new Date().toISOString(),
+              plannedSec,
+              actualSec,
+              completed
+            }
+          : null
+
+    if (phaseEndData) {
+      for (const listener of this.phaseEndListeners) {
+        try {
+          listener(phaseEndData)
+        } catch (e) {
+          log.error('PhaseEnd listener error:', e)
+        }
+      }
     }
 
     const next = getNextPhase(
@@ -313,7 +347,13 @@ class TimerService {
   private emitStateChange(): void {
     const state = this.getState()
     this.sendToAll('timer:state-change', state)
-    this.onStateChangeCallback?.(state)
+    for (const listener of this.stateChangeListeners) {
+      try {
+        listener(state)
+      } catch (e) {
+        log.error('StateChange listener error:', e)
+      }
+    }
   }
 
   private sendToAll(channel: string, data: unknown): void {

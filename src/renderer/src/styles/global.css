@@ -644,6 +644,12 @@ body {
   cursor: pointer;
 }
 
+.setting-item input[type='range'] {
+  accent-color: var(--accent-warm);
+  cursor: pointer;
+  height: 4px;
+}
+
 .setting-item select {
   padding: 7px 12px;
   border-radius: var(--radius-sm);

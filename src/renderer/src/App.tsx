@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Timer, BarChart3, Settings } from 'lucide-react'
 import TimerPage from './pages/TimerPage'
 import StatsPage from './pages/StatsPage'
@@ -13,10 +13,30 @@ const tabs: { key: Tab; label: string; icon: typeof Timer }[] = [
   { key: 'settings', label: '设置', icon: Settings }
 ]
 
+export function applyWarmFilter(enabled: boolean, intensity: number): void {
+  const root = document.documentElement
+  if (enabled) {
+    const sepia = intensity * 0.004
+    const saturate = 1 + intensity * 0.003
+    const hueRotate = intensity * -0.15
+    root.style.filter = `sepia(${sepia}) saturate(${saturate}) hue-rotate(${hueRotate}deg)`
+  } else {
+    root.style.filter = ''
+  }
+}
+
+function useWarmFilter() {
+  useEffect(() => {
+    window.api.settingsGet().then((s) => {
+      applyWarmFilter(!!s.warmFilter, (s.warmFilterIntensity as number) ?? 40)
+    })
+  }, [])
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer')
-  // 初始化主题（在最顶层，确保 class 尽早设置）
   useTheme()
+  useWarmFilter()
 
   return (
     <div className="app">

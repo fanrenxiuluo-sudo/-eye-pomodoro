@@ -32,7 +32,9 @@ export async function initSettings(): Promise<void> {
     soundVolume: { type: 'number', default: DEFAULT_SETTINGS.soundVolume },
     notificationEnabled: { type: 'boolean', default: DEFAULT_SETTINGS.notificationEnabled },
     theme: { type: 'string', default: DEFAULT_SETTINGS.theme },
-    autoStartOnBoot: { type: 'boolean', default: DEFAULT_SETTINGS.autoStartOnBoot }
+    autoStartOnBoot: { type: 'boolean', default: DEFAULT_SETTINGS.autoStartOnBoot },
+    warmFilter: { type: 'boolean', default: DEFAULT_SETTINGS.warmFilter },
+    warmFilterIntensity: { type: 'number', default: DEFAULT_SETTINGS.warmFilterIntensity }
   }
 
   store = new ElectronStore({ schema })

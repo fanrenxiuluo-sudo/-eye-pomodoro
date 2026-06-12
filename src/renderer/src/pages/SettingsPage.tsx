@@ -3,6 +3,7 @@ import { Download, CheckCircle, RefreshCw, AlertCircle, ExternalLink } from 'luc
 import type { Settings } from '../../../shared/types'
 import { DEFAULT_SETTINGS } from '../../../shared/types'
 import { useTheme, type Theme } from '../hooks/useTheme'
+import { applyWarmFilter } from '../App'
 
 interface UpdateStatus {
   checking: boolean
@@ -68,6 +69,9 @@ export default function SettingsPage() {
       setSettings((prev) => {
         const next = { ...prev, [key]: value }
         if (loaded) saveSettings(next)
+        if (key === 'warmFilter' || key === 'warmFilterIntensity') {
+          applyWarmFilter(!!next.warmFilter, next.warmFilterIntensity)
+        }
         return next
       })
     },
@@ -153,6 +157,37 @@ export default function SettingsPage() {
             }
           />
         </div>
+      </div>
+
+      {/* ── 护眼设置 ── */}
+      <div className="settings-section">
+        <h3>护眼设置</h3>
+        <div className="setting-item">
+          <label>暖色滤镜（减少蓝光）</label>
+          <input
+            type="checkbox"
+            checked={settings.warmFilter}
+            onChange={(e) => handleChange('warmFilter', e.target.checked)}
+          />
+        </div>
+        {settings.warmFilter && (
+          <div className="setting-item">
+            <label>滤镜强度</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="range"
+                min={10}
+                max={80}
+                value={settings.warmFilterIntensity}
+                onChange={(e) => handleChange('warmFilterIntensity', parseInt(e.target.value, 10))}
+                style={{ width: 120 }}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', minWidth: 32 }}>
+                {settings.warmFilterIntensity}%
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 行为设置 ── */}
