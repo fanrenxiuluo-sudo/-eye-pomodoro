@@ -1,6 +1,6 @@
 {
   "name": "eye-pomodoro",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "护眼番茄钟 — 定时休息提醒，保护眼睛",
   "main": "./out/main/index.js",
   "author": "fanrenxiuluo-sudo",

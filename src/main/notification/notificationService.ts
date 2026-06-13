@@ -46,6 +46,9 @@ function forceShowWindow(): void {
       win.flashFrame(true)
       log.info('Taskbar flashing started')
     }
+    if (win.isMinimized()) {
+      win.restore()
+    }
     if (!win.isVisible()) {
       win.show()
     }
@@ -86,9 +89,20 @@ export function initNotificationService(): void {
       )
       const tip = getRandomTip(breakType)
       sendAlertToRenderer('work-end', `专注完成！休息 ${breakType === 'long' ? settings.longBreakDuration : settings.shortBreakDuration} 分钟`, formatTipBody(tip))
+      if (settings.notificationEnabled) {
+        const breakDuration = breakType === 'long' ? settings.longBreakDuration : settings.shortBreakDuration
+        showNotification(
+          '⏰ 专注结束！该休息了',
+          `已完成 ${timerService.getState().pomodorosCompleted} 个番茄 → 休息 ${breakDuration} 分钟\n💡 ${tip.title}: ${tip.content.slice(0, 40)}...`,
+          'work-end'
+        )
+      }
     } else {
       // 休息结束 → 工作开始
       sendAlertToRenderer('break-end', `休息结束，准备开始专注 ${settings.workDuration} 分钟`, '')
+      if (settings.notificationEnabled) {
+        showNotification('🍅 休息结束！该专注了', `准备开始专注 ${settings.workDuration} 分钟`, 'break-end')
+      }
     }
 
     if (!settings.soundEnabled) return
@@ -120,26 +134,11 @@ export function initNotificationService(): void {
       showNotification('🍅 开始专注', `专注 ${settings.workDuration} 分钟，加油！`, 'work-start')
     }
 
-    const notifyBreakStart = () => {
-      const breakType = getBreakType(state.pomodorosCompleted, settings.pomodorosBeforeLongBreak)
-      const tip = getRandomTip(breakType)
-      const breakDuration = breakType === 'long' ? settings.longBreakDuration : settings.shortBreakDuration
-      showNotification(
-        '⏰ 专注结束！该休息了',
-        `已完成 ${state.pomodorosCompleted} 个番茄 → 休息 ${breakDuration} 分钟\n💡 ${tip.title}: ${tip.content.slice(0, 40)}...`,
-        'break-start'
-      )
-    }
-
     switch (currentPhase) {
       case PhaseState.WORKING:
-        if (previousPhase === PhaseState.IDLE || previousPhase.toString().includes('break')) {
+        if (previousPhase === PhaseState.IDLE) {
           notifyWorkStart()
         }
-        break
-      case PhaseState.SHORT_BREAK:
-      case PhaseState.LONG_BREAK:
-        notifyBreakStart()
         break
     }
 

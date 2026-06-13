@@ -110,8 +110,8 @@ function playWav(wavBuffer: Buffer): void {
 function playWithPowerShell(filePath: string): void {
   try {
     const escaped = filePath.replace(/'/g, "''")
-    // 使用 Play() 而非 PlaySync()，避免阻塞主线程
-    const ps = `Add-Type -AssemblyName System.Windows.Forms; $player = New-Object System.Windows.Forms.SoundPlayer '${escaped}'; $player.Play()`
+    // PowerShell 进程需要等待播放完成，否则进程退出会中断 SoundPlayer.Play()
+    const ps = `Add-Type -AssemblyName System.Windows.Forms; $player = New-Object System.Windows.Forms.SoundPlayer '${escaped}'; $player.PlaySync()`
     execFile('powershell', ['-NoProfile', '-Command', ps])
   } catch (e) {
     log.warn('PowerShell audio playback failed:', e)
